@@ -190,6 +190,7 @@ draft_genome.fasta: celera-assembly/9-terminator/asm.scf.fasta
 # preprocess the fasta file for nanopolish
 raw.reads.np.fasta: raw.reads.fasta nanopolish.version
 	nanopolish/consensus-preprocess.pl $< > $@
+  #perl -i.bak -ple 's/^>(\S+)\s+(\S+)\s+(\S+)/>$1 $3/' raw.reads.np.fasta
 
 # index the draft assembly for bwa
 draft_genome.fasta.bwt: draft_genome.fasta bwa.version
