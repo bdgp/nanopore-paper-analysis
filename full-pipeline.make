@@ -139,11 +139,12 @@ FORCE:
 ##################################################
 
 # Export 2D reads to fasta files using poretools
-raw.reads.fasta: ERX708228.fast5/ ERX708229.fast5/ ERX708230.fast5/ ERX708231.fast5/ pythonlibs.version lengthsort.version
-	poretools fasta --type 2D ERX708228.fast5/ > raw.reads.unsorted
-	poretools fasta --type 2D ERX708229.fast5/ >> raw.reads.unsorted
-	poretools fasta --type 2D ERX708230.fast5/ >> raw.reads.unsorted
-	poretools fasta --type 2D ERX708231.fast5/ >> raw.reads.unsorted
+raw.reads.fasta: pythonlibs.version lengthsort.version
+	#poretools fasta --type 2D ERX708228.fast5/ > raw.reads.unsorted
+	#poretools fasta --type 2D ERX708229.fast5/ >> raw.reads.unsorted
+	#poretools fasta --type 2D ERX708230.fast5/ >> raw.reads.unsorted
+	#poretools fasta --type 2D ERX708231.fast5/ >> raw.reads.unsorted
+	poretools fasta --type 2D mstoiber_PC_default_sample_id_reads.fast5/ >raw.reads.unsorted
 	python lengthsort.py < raw.reads.unsorted > $@
 
 # Run nanocorrect in parallel
@@ -156,12 +157,12 @@ raw.reads.fasta: ERX708228.fast5/ ERX708229.fast5/ ERX708230.fast5/ ERX708231.fa
 
 ##################################################
 #
-# Step 4. Run the celera assembler on the 
+# Step 4. Run the celera assembler on the
 # corrected reads.
 #
 ##################################################
 
-# prepare the input into celera assembler. 
+# prepare the input into celera assembler.
 # we want to use the twice-corrected data here, so two prereqs
 assembly.input.fastq: raw.reads.corrected.fasta raw.reads.corrected.corrected.fasta ca.version
 	java -Xmx1024M -jar ./wgs-8.2/Linux-amd64/bin/convertFastaAndQualToFastq.jar raw.reads.corrected.corrected.fasta > $@
@@ -191,11 +192,11 @@ raw.reads.np.fasta: raw.reads.fasta nanopolish.version
 	nanopolish/consensus-preprocess.pl $< > $@
 
 # index the draft assembly for bwa
-draft_genome.fasta.bwt: draft_genome.fasta
+draft_genome.fasta.bwt: draft_genome.fasta bwa.version
 	bwa index $<
 
 # index the draft assembly for faidx
-draft_genome.fasta.fai: draft_genome.fasta
+draft_genome.fasta.fai: draft_genome.fasta samtools.version
 	samtools faidx $<
 
 # align reads to draft assembly
@@ -203,11 +204,11 @@ reads_to_draft.sorted.bam: draft_genome.fasta draft_genome.fasta.bwt raw.reads.n
 	bwa mem -t $(THREADS) -x ont2d draft_genome.fasta raw.reads.np.fasta | samtools view -Sb - | samtools sort -@ $(CORES) - >$@
 
 # index the bam file
-reads_to_draft.sorted.bam.bai: reads_to_draft.sorted.bam
+reads_to_draft.sorted.bam.bai: reads_to_draft.sorted.bam samtools.version
 	samtools index $<
 
 # run nanopolish
 polished_genome.fasta: draft_genome.fasta draft_genome.fasta.fai reads_to_draft.sorted.bam.bai raw.reads.np.fasta
-	python nanopolish/nanopolish_makerange.py draft_genome.fasta | parallel --progress -P $(NP_PROCESS) \
+	python nanopolish/nanopolish_makerange.py draft_genome.fasta | parallel -t --progress -P $(NP_PROCESS) \
         nanopolish/nanopolish consensus -o nanopolish.{1}.fa -r raw.reads.np.fasta -b reads_to_draft.sorted.bam -g draft_genome.fasta -w {1} -t $(THREADS)
 	python nanopolish/nanopolish_merge.py draft_genome.fasta nanopolish.scf*.fa > $@
