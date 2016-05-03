@@ -17,8 +17,8 @@ CA_LINK=http://downloads.sourceforge.net/project/wgs-assembler/wgs-assembler/wgs
 POA_LINK=http://downloads.sourceforge.net/project/poamsa/poamsa/2.0/poaV2.tar.gz
 
 # Parameters to control execution
-CORES=16
-THREADS=4
+CORES=48
+THREADS=48
 NC_PROCESS=$(CORES)
 NP_PROCESS=$(shell expr $(CORES) / $(THREADS) )
 
@@ -66,7 +66,7 @@ pythonlibs.version:
 	pip install pysam > $@
 	pip install cython >> $@
 	pip install numpy==1.8.1 >> $@
-	pip install h5py==2.3.0 >> $@
+	pip install h5py==2.3.1 >> $@
 	pip install cython >> $@
 	pip install poretools >> $@
 	pip install biopython >> $@
@@ -200,7 +200,7 @@ draft_genome.fasta.fai: draft_genome.fasta
 
 # align reads to draft assembly
 reads_to_draft.sorted.bam: draft_genome.fasta draft_genome.fasta.bwt raw.reads.np.fasta bwa.version samtools.version
-	bwa mem -t $(THREADS) -x ont2d draft_genome.fasta raw.reads.np.fasta | samtools view -Sb - | samtools sort -f - $@
+	bwa mem -t $(THREADS) -x ont2d draft_genome.fasta raw.reads.np.fasta | samtools view -Sb - | samtools sort -@ $(CORES) - >$@
 
 # index the bam file
 reads_to_draft.sorted.bam.bai: reads_to_draft.sorted.bam
